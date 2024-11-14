@@ -10,6 +10,8 @@ const io = socketIo(server, {
   },
 });
 
+const chatHistory = [];
+
 // Serve a simple HTTP response when the root URL is accessed
 app.get('/', (req, res) => {
   res.send('WebSocket Server is Running!'); // This will be shown in the browser
@@ -18,6 +20,8 @@ app.get('/', (req, res) => {
 // Listen for a new connection
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);  // Log when a user connects
+
+  socket.emit('chat history', chatHistory);
   
   socket.on('username', (username) => {
     console.log(`${username} connected with id: ${socket.id}`);
@@ -26,6 +30,7 @@ io.on('connection', (socket) => {
   // Listen for messages from clients
   socket.on('chat message', (msg) => {
     console.log('Message received:', msg);
+    chatHistory.push(msg); 
     io.emit('chat message', msg); // Send the message to all clients
   });
 
