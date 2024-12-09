@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
 const sqlite3 = require('sqlite3').verbose(); // Import SQLite
@@ -11,20 +12,31 @@ const io = socketIo(server, {
   },
 });
 
+app.use(express.static(path.join(__dirname, 'templates')));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+let connectedUsers = [];
+
 const db = new sqlite3.Database('users.db');
 
-// Serve a simple HTTP response when the root URL is accessed
+// root
 app.get('/', (req, res) => {
-  res.send('WebSocket Server is Running!'); // This will be shown in the browser
+  res.sendFile(path.join(__dirname, 'templates', 'base.html'));
 });
 
 io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);  // Log when a user connects
+  console.log(`User connected: ${socket.id}`);
 
+  // log dced user
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
+
+    connectedUsers = connectedUsers.filter(user => user.socketId !== socket.id);
+
+    io.emit('userListUpdate', connectedUsers);
   });
 
+  // list users
   socket.on('get_users', () => {
     db.all('SELECT * FROM users', [], (err, rows) => {
       if (err) {
@@ -35,6 +47,7 @@ io.on('connection', (socket) => {
     });
   });
 
+  // add user from frontend
   socket.on('add_user', (newUserData) => {
     const {email, password, img} = newUserData;
 
@@ -58,6 +71,7 @@ io.on('connection', (socket) => {
     );
   });
 
+  // edit user from frontend
   socket.on('edit_user', (editUserData) => {
     const {email, password, img, oldEmail} = editUserData;
 
@@ -96,6 +110,7 @@ io.on('connection', (socket) => {
     });
   });
 
+  // login authentication
   socket.on('login_request', (data) => {
     const { email, password, img} = data;
 
@@ -105,6 +120,14 @@ io.on('connection', (socket) => {
         socket.emit('login_response', { success: false, message: 'An error occurred' });
       } else if (row) {
         // User found, login successful
+        const loggedInUser = {
+          socketId: socket.id,
+          email: email,
+          loginTime: new Date().toISOString(),
+        };
+        connectedUsers.push(loggedInUser);
+        io.emit('userListUpdate', connectedUsers);
+
         socket.emit('login_response', { success: true, message: `${data.email} Successfully Logged In!`});
       } else {
         // User not found or invalid credentials
@@ -112,13 +135,13 @@ io.on('connection', (socket) => {
       }
     });
   });
-
 });
 
 server.listen(3000, () => {
   console.log('WebSocket server running on http://localhost:3000');
 });
 
+// log signout
 process.on('SIGINT', () => {
   console.log('Shutting down server...');
   server.close(() => {
