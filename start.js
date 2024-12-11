@@ -12,6 +12,42 @@ const io = socketIo(server, {
   },
 });
 
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Cloudinary configuration
+cloudinary.config({
+  cloud_name: 'ds1mg3eoc', // Replace with your Cloudinary Cloud Name
+  api_key: '477817764153357', // Replace with your Cloudinary API Key
+  api_secret: 'PCTCzxutwU1dd_Yib1M2iN-xod0', // Replace with your Cloudinary API Secret
+});
+
+// Configure multer storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'user_images', // Name of the folder in Cloudinary
+    format: async (req, file) => 'jpeg', // Image format (e.g., jpeg, png)
+    public_id: (req, file) => `user_${Date.now()}`, // Unique public ID for the image
+  },
+});
+
+const upload = multer({ storage });
+
+// Express route for image upload
+app.post('/upload-image', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
+
+  // Respond with the Cloudinary URL
+  res.status(200).json({
+    success: true,
+    url: req.file.path, // The URL of the uploaded image on Cloudinary
+  });
+});
+
 app.use(express.static(path.join(__dirname, 'templates')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 

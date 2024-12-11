@@ -96,17 +96,21 @@
         users.forEach((user) => {
           const row = document.createElement("tr");
 
+          // Image cell
           const imgCell = document.createElement("td");
           imgCell.classList.add("image-container");
           const img = document.createElement("img");
-          img.src = user.img || "/assets/default.jpg";
+          img.src = user.img || "../assets/default.jpg"; // Fallback if no image URL
           img.alt = "Profile Picture";
           imgCell.appendChild(img);
+          row.appendChild(imgCell);
 
+          // Email cell
           const emailCell = document.createElement("td");
           emailCell.textContent = user.email;
           row.appendChild(emailCell);
 
+          // Password cell
           const passwordCell = document.createElement("td");
           passwordCell.textContent = user.password;
           row.appendChild(passwordCell);
@@ -115,6 +119,7 @@
         });
       }
 
+      // Listen for updates to user data
       socket.on("users_data", (users) => {
         populateTable(users);
       });
