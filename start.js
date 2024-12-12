@@ -4,6 +4,11 @@ const http = require('http');
 const socketIo = require('socket.io');
 const sqlite3 = require('sqlite3').verbose(); // Import SQLite
 
+const fs = require('fs');
+const axios = require('axios'); // To fetch the image from a URI
+const { resolve } = require('path'); // To resolve file paths
+const { encode } = require('base64-arraybuffer');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
