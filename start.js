@@ -4,11 +4,6 @@ const http = require('http');
 const socketIo = require('socket.io');
 const sqlite3 = require('sqlite3').verbose(); // Import SQLite
 
-const fs = require('fs');
-const axios = require('axios'); // To fetch the image from a URI
-const { resolve } = require('path'); // To resolve file paths
-const { encode } = require('base64-arraybuffer');
-
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -125,55 +120,6 @@ io.on('connection', (socket) => {
 
       if (row) {
         const userId = row.id;
-
-        if (img) {
-          // Check if img is a base64 data URL
-          if (img.startsWith('data:image')) {
-            const base64Data = img.split(';base64,').pop(); // Get the base64 encoded part
-            
-            // Convert the base64 image data to a buffer
-            const buffer = Buffer.from(base64Data, 'base64');
-            
-            // Now upload the buffer to Cloudinary
-            cloudinary.uploader.upload_stream({
-              resource_type: 'image',
-              public_id: `user_${userId}_updated_${Date.now()}`, // Unique public ID for the image
-              folder: 'user_images',
-            }, (error, result) => {
-              if (error) {
-                console.error('Error uploading to Cloudinary:', error);
-                socket.emit('user_edited', { success: false, message: 'Error uploading image to Cloudinary' });
-                return;
-              }
-  
-              // Image uploaded successfully, get the Cloudinary URL
-              const imageUrl = result.secure_url;  // Cloudinary returns a URL
-  
-              // Update the user's image URL in the database
-              db.run(
-                'UPDATE users SET email = ?, password = ?, img = ? WHERE id = ?',
-                [email, password, imageUrl, userId],
-                (err) => {
-                  if (err) {
-                    console.error('Error editing user:', err.message);
-                    socket.emit('user_edited', { success: false, message: 'Error editing user' });
-                  } else {
-                    console.log('User edited successfully with new image');
-                    db.all('SELECT * FROM users', [], (err, rows) => {
-                      if (!err) {
-                        io.emit('users_data', rows); // Notify all connected clients
-                      }
-                    });
-                    socket.emit('user_edited', { success: true, message: 'User edited successfully' });
-                  }
-                }
-              );
-            }).end(buffer); // End the upload stream with the buffer
-          } else {
-            console.log('Received img is not a valid data URI');
-            socket.emit('user_edited', { success: false, message: 'Invalid image data' });
-          }
-        } else {
           // If no image is provided, just update email and password
           db.run(
             'UPDATE users SET email = ?, password = ?, img = ? WHERE id = ?',
@@ -193,7 +139,7 @@ io.on('connection', (socket) => {
               }
             }
           );
-        }
+        
       } else {
         console.log('User not found with this email');
         socket.emit('user_edited', { success: false, message: 'User not found' });
